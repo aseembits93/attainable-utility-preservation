@@ -188,7 +188,7 @@ class DetectMotionInObjectType():
         current = statePair[:,:,1]
         previous = statePair[:,:,0]
 
-        return diff_two_states(current, previous)
+        return diff_two_states(current, previous, self.object_type)
 
 
 def count_movers(state_diff, counter):
