@@ -34,7 +34,7 @@ class Reshaper():
         if ref is None:
             ref = np.zeros([im_width, im_height])
         print(ref.shape)
-        assert ref.shape == [im_width, im_height]
+        assert ref.shape == np.array([im_width, im_height])
         self.ref = np.reshape(ref, [im_width * im_height, -1])
 
     def process(self, statePair):
