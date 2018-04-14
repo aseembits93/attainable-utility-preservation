@@ -35,7 +35,8 @@ class Reshaper():
             ref = np.zeros([im_width, im_height])
         print(ref.shape)
         print(type(ref.shape))
-        assert ref.shape == [im_width, im_height]
+        print(type((im_width, im_height)))
+        assert ref.shape == (im_width, im_height)
         self.ref = np.reshape(ref, [im_width * im_height, -1])
 
     def process(self, statePair):
