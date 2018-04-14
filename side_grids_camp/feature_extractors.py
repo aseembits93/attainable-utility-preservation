@@ -33,7 +33,7 @@ class Reshaper():
 
         if ref is None:
             ref = np.zeros([im_width, im_height])
-            
+
         assert ref.shape == (im_width, im_height)
         self.ref = np.reshape(ref, [im_width * im_height, -1])
 
@@ -44,7 +44,9 @@ class Reshaper():
         Args:
             statePair: list of 2 grayscale images [prev_img, img]
         """
-        _, img = statePair
+        img = statePair[:,:,1]
+        _ = statePair[:,:,0]
+        #_, img = statePair
         assert img.shape == [self.im_width, self.im_height]
         return np.reshape(img, [self.im_width * self.im_height, -1]) - self.ref
 
@@ -68,7 +70,8 @@ class ObjectDistances():
         Args:
             statePair: list of 2 grayscale images [prev_img, img]
         """
-        _, img = statePair
+        img = statePair[:,:,1]
+        _ = statePair[:,:,0]
         output = []
 
         for c1, c2 in self.colourpairs:
