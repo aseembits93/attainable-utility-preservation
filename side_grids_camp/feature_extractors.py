@@ -47,7 +47,7 @@ class Reshaper():
         img = statePair[:,:,1]
         _ = statePair[:,:,0]
         #_, img = statePair
-        assert img.shape == [self.im_width, self.im_height]
+        assert img.shape == (self.im_width, self.im_height)
         return np.reshape(img, [self.im_width * self.im_height, -1]) - self.ref
 
 
