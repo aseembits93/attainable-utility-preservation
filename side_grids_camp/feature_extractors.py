@@ -119,7 +119,7 @@ class HasMoved():
         previous = statePair[:,:,0]
 
         ## Could sum and squeeze here to just get a scalar
-        return diff_two_states(current, self.ref, self.object_type)[0]
+        return np.abs(diff_two_states(current, self.ref, self.object_type))[0]
 
 class CountAllObjects():
     def __init__(self, floor, wall, delta=False):
@@ -130,7 +130,7 @@ class CountAllObjects():
     def process(self, statePair):
         current = statePair[:,:,1]
         previous = statePair[:,:,0]
-
+git
         currentObjs = trim_walls_floors(current, self.floorCode, self.wallCode)
         prevObjs = trim_walls_floors(previous, self.floorCode, self.wallCode)
 
