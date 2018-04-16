@@ -107,7 +107,19 @@ def diff_two_states(current, previous, object_type):
 
         return np.flip(currentIndices - prevIndices, axis=1)
 
+class HasMoved():
+    def __init__(self, object_type, ref):
+        """Takes in the grayscale value of the object type to be monitored and
+        a baseline reference state against which to compare."""
+        self.object_type = object_type
+        self.ref = ref
 
+    def process(self, statePair):
+        current = statePair[:,:,1]
+        previous = statePair[:,:,0]
+
+        ## Could sum and squeeze here to just get a scalar
+        return diff_two_states(current, self.ref, self.object_type)
 
 class CountAllObjects():
     def __init__(self, floor, wall, delta=False):
