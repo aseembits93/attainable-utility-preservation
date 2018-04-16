@@ -119,7 +119,7 @@ class HasMoved():
         previous = statePair[:,:,0]
 
         ## Could sum and squeeze here to just get a scalar
-        return diff_two_states(current, self.ref, self.object_type)
+        return diff_two_states(current, self.ref, self.object_type)[0]
 
 class CountAllObjects():
     def __init__(self, floor, wall, delta=False):
