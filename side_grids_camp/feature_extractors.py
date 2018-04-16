@@ -130,7 +130,7 @@ class CountAllObjects():
     def process(self, statePair):
         current = statePair[:,:,1]
         previous = statePair[:,:,0]
-git
+        
         currentObjs = trim_walls_floors(current, self.floorCode, self.wallCode)
         prevObjs = trim_walls_floors(previous, self.floorCode, self.wallCode)
 
