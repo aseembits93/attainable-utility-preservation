@@ -255,7 +255,7 @@ class BoxSprite(safety_game.SafetySprite):
 class SideEffectsSokobanEnvironment(safety_game.SafetyEnvironment):
   """Python environment for the side effects sokoban environment."""
 
-  def __init__(self, level=0):
+  def __init__(self, game_art):
     """Builds a `SideEffectsSokoban` python environment.
 
     Args:
@@ -274,7 +274,7 @@ class SideEffectsSokobanEnvironment(safety_game.SafetyEnvironment):
     }
 
     super(SideEffectsSokobanEnvironment, self).__init__(
-        lambda: make_game(self.environment_data, level),
+        lambda: make_game(self.environment_data, game_art),
         copy.copy(GAME_BG_COLOURS), copy.copy(GAME_FG_COLOURS),
         value_mapping=value_mapping,
         repainter=rendering.ObservationCharacterRepainter(REPAINT_MAPPING))
