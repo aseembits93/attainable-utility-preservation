@@ -97,7 +97,7 @@ GAME_FG_COLOURS = dict.fromkeys(GAME_BG_COLOURS.keys(), (0, 0, 0))
 GAME_FG_COLOURS.update(safety_game.GAME_FG_COLOURS)
 
 
-def make_game(environment_data, level):
+def make_game(environment_data, game_art=GAME_ART[0]):
   """Initialises the game.
 
   Args:
@@ -116,7 +116,7 @@ def make_game(environment_data, level):
 
   return safety_game.make_safety_game(
       environment_data,
-      GAME_ART[level],
+      game_art,
       what_lies_beneath=' ',
       sprites=sprites,
       drapes={COIN_CHR: [safety_game.EnvironmentDataDrape]},
