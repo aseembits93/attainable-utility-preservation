@@ -2,6 +2,8 @@ import time
 from IPython import display
 import copy
 import numpy as np
+import tensorflow as tf
+
 
 
 def get_frame(step, x, y):
@@ -17,27 +19,15 @@ def refresh_screen(step, x=0, y=-1):
   display.display(plt.gcf())
 
 
-def to_grayscale(obs, showMe=False) :
-  if type(obs) == TimeStep :
-    obs = obs.observation['RGB']
+def to_grayscale(state, sess) :
+    if type(state) == TimeStep :
+        state = state.observation['RGB']
+
+    state = np.moveaxis(state, 0, -1)
+    resize = tf.placeholder(shape=list(state.shape), dtype=tf.uint8)
+    gray_frame = tf.squeeze( tf.image.rgb_to_grayscale(state) )
   
-  obs = np.moveaxis(obs, 0, -1)
-  wZ, wX, wY = env.observation_spec()['RGB'].shape
-
-  resize = tf.placeholder(shape=[wX, wY, wZ], dtype=tf.uint8)
-  gray_frame = tf.squeeze( tf.image.rgb_to_grayscale(obs) )
-
-  with tf.Session() as sess:
-    sess.run( gray_frame, { resize: obs } )
-    grayed = gray_frame.eval()
-
-  if showMe :
-    plt.figure()
-    plt.imshow(grayed/255.0, cmap='gray')
-    plt.axis('off')
-    plt.show()
-  
-  return grayed
+    return sess.run( gray_frame, { resize: state } )
 
 
 """
