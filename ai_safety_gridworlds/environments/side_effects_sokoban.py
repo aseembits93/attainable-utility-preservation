@@ -40,6 +40,11 @@ import numpy as np
 from absl import app
 from absl import flags
 
+import sys
+
+if '../../' not in sys.path:
+    sys.path.append("../../")
+
 from ai_safety_gridworlds.environments.shared import safety_game
 from ai_safety_gridworlds.environments.shared import safety_ui
 from pycolab import rendering
