@@ -34,7 +34,7 @@ class Reshaper():
         if ref is None:
             ref = np.zeros([im_width, im_height])
 
-        assert ref.shape == [im_width, im_height]
+        assert ref.shape == (im_width, im_height)
         self.ref = np.reshape(ref, [im_width * im_height, -1])
 
     def process(self, statePair):
@@ -44,9 +44,10 @@ class Reshaper():
         Args:
             statePair: list of 2 grayscale images [prev_img, img]
         """
-        _, img = statePair
-        assert img.shape == [self.im_width, self.im_height]
-        return np.reshape(img, [self.im_width * self.im_height, -1]) - self.ref
+        #_, img = statePair
+        img = statePair[:,:,1]
+        assert img.shape == (self.im_width, self.im_height)
+        return np.squeeze(np.reshape(img, [self.im_width * self.im_height, -1]) - self.ref)
 
 
 class ObjectDistances():
@@ -60,89 +61,96 @@ class ObjectDistances():
         to measure the distance between.
         """
         self.colourpairs = colourpairs
-    
+
     def process(self, statePair):
         """Process the image to give horizontal and vertical distances between
         nearest objects of the respective colours.
-        
+
         Args:
             statePair: list of 2 grayscale images [prev_img, img]
         """
-        _, img = statePair
+        img = statePair[:,:,1]
+
         output = []
-        
         for c1, c2 in self.colourpairs:
             coords1 = np.argwhere(img == c1)
             coords2 = np.argwhere(img == c2)
-            
-            z1 = np.concat([coords1]*len(coords2))
-            z2 = np.concat([coords2]*len(coords1))
-            
-            coord_diffs = np.abs(z1-z2)
-            dists = coord_diffs.sum(axis=1)
-            closest = np.argmin(dists) # NOTE: chooses first in case of tie
-            
-            x_dist, y_dist = coord_diffs[closest]
-            
-            output.append(x_dist)
-            output.append(y_dist)
-        
+
+            ## Assume that the distance is zero because one is on top
+            if (len(coords1) == 0) or (len(coords2) == 0):
+                output.append(0)
+                output.append(0)
+
+            ## Otherwise find the closest
+            else:
+                z1 = np.concatenate([coords1]*len(coords2))
+                z2 = np.concatenate([coords2]*len(coords1))
+
+                coord_diffs = np.abs(z1-z2)
+                dists = coord_diffs.sum(axis=1)
+                closest = np.argmin(dists) # NOTE: chooses first in case of tie
+
+                x_dist, y_dist = coord_diffs[closest]
+
+                output.append(x_dist)
+                output.append(y_dist)
+
         return np.array(output)
 
 
 # Remove elements corresponding to wall and floor tiles. Distorts shape.
-def trim_walls_floors(statePair, floor:int, wall:int) :
-    return statePair[ (statePair != floor) & (statePair != wall) ] 
+def trim_walls_floors(statePair, floor, wall) :
+    return statePair[ (statePair != floor) & (statePair != wall) ]
 
 
 def diff_two_states(current, previous, object_type):
-    
+
         currentWeirdLocations = np.where(current == object_type)
         currentIndices = np.stack(currentWeirdLocations, axis=1)
         prevWeirdLocations = np.where(previous == object_type)
         prevIndices = np.stack(prevWeirdLocations, axis=1)
-        
+
         return np.flip(currentIndices - prevIndices, axis=1)
-        
+
 
 
 class CountAllObjects():
-    def __init__(self, floor:int, wall:int, delta=False):
+    def __init__(self, floor, wall, delta=False):
         self.delta = delta
         self.floorCode = floor
         self.wallCode = wall
-        
-    def process(self, statePair):        
+
+    def process(self, statePair):
         current = statePair[:,:,1]
         previous = statePair[:,:,0]
-        
+
         currentObjs = trim_walls_floors(current, self.floorCode, self.wallCode)
         prevObjs = trim_walls_floors(previous, self.floorCode, self.wallCode)
-        
-        if (self.delta == True):    
+
+        if (self.delta == True):
             return len(currentObjs) - len(prevObjs)
-        else:   
+        else:
             return len(currentObjs)
 
 
 
 class CountOfTypes():
-    def __init__(self, floor:int, wall:int, delta=False):
+    def __init__(self, floor, wall, delta=False):
         self.delta = delta
         self.floorCode = floor
         self.wallCode = wall
-        
-    def process(self, statePair):        
+
+    def process(self, statePair):
         current = statePair[:,:,1]
         previous = statePair[:,:,0]
-        
+
         currentObjs = trim_walls_floors(current, self.floorCode, self.wallCode)
         prevObjs = trim_walls_floors(previous, self.floorCode, self.wallCode)
-        
-        if (self.delta == True):    
+
+        if (self.delta == True):
             return len( set(np.unique(currentObjs)) \
                         - set(np.unique(prevObjs)) )
-        else:   
+        else:
             return len(np.unique(currentObjs))
 
 
@@ -150,15 +158,15 @@ class CountOfTypes():
 class CountObjectsOfType():
     """Takes object type (a greyscale value from 0 to 255) and returns
     the number of objects of that type present in the most recent statePair."""
-    
+
     def __init__(self, object_type, delta=False):
         """Initialises feature extractor to count the number of objects of given
-        type present in the most recent statePair (where type is represented as a 
+        type present in the most recent statePair (where type is represented as a
         greyscale value from 0 to 255). If delta is true, returns the change in
         the number of objects from previous statePair to current statePair."""
         self.object_type = object_type
         self.delta = delta
-        
+
     def process(self, statePair):
         current = statePair[:,:,1]
         previous = statePair[:,:,0]
@@ -167,7 +175,7 @@ class CountObjectsOfType():
             # return difference in num of objs between current statePair and previous statePair
             return (current == self.object_type).sum() - \
                     (previous == self.object_type).sum()
-        else:   
+        else:
             # return number of objects of given type in current statePair
             return (current == self.object_type).sum()
 
@@ -176,44 +184,62 @@ class CountObjectsOfType():
 
 # Assume: no self-destruct
 # Assume: counts appearance/disappearance as motion
-# Returns the 
+# Returns the
 class DetectMotionInObjectType():
     def __init__(self, typ):
         self.object_type = typ
-        
+
     def process(self, statePair):
         current = statePair[:,:,1]
         previous = statePair[:,:,0]
-        
+
         return diff_two_states(currentIndices, prevIndices)
 
 
 def count_movers(state_diff, counter):
     moved = np.abs(counter.process(state_diff))
-    
+
     return len(moved > 0)
 
 
 class CountTypesOfMovingObjects():
     """Returns the number different types of moving objects."""
-    
+
     def __init__(self, floor_code=219, wall_code=152):
         self.floor_code = floor_code
         self.wall_code = wall_code
-        
+
     def process(self, statePair):
         current = statePair[:,:,1]
         previous = statePair[:,:,0]
-        
+
         actual_objects = current[(current != self.wall_code) & (current != self.floor_code)]
         obj_types = np.unique(actual_objects)
         print(obj_types)
         diffs = [diff_two_states(current, previous, typ) for typ in obj_types]
         return [np.count_nonzero(diff) for diff in diffs]
-        
+
 def count_all_movers(state):
-    
+
     counter = CountTypesOfMovingObjects()
     type_counts = counter.process(state)
     return sum(type_counts)
 
+
+
+class IsCornered() :
+    def __init__(self, wall, objectCode):
+        self.wallCode = wall
+        self.objectCode = objectCode
+
+    def process(self, statePair) :
+        objectCode = self.objectCode
+        state = statePair[:,:,1]
+        coords = np.argwhere(state == objectCode)[0]
+
+        leftRight = [ (coords[0], max(0, coords[1]+i)) for i in range(-1,2, 2) ]
+        upDown = [ (max(0, coords[0]+i), coords[1]) for i in range(-1,2, 2) ]
+        xCorners = [state[el] == self.wallCode for el in leftRight]
+        yCorners = [state[el] == self.wallCode for el in upDown]
+
+        return sum(xCorners) > 0 and sum(yCorners) > 0

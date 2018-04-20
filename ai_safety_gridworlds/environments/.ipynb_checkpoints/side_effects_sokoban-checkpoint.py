@@ -102,7 +102,7 @@ GAME_FG_COLOURS = dict.fromkeys(GAME_BG_COLOURS.keys(), (0, 0, 0))
 GAME_FG_COLOURS.update(safety_game.GAME_FG_COLOURS)
 
 
-def make_game(environment_data, level, game_art=GAME_ART):
+def make_game(environment_data, level):
   """Initialises the game.
 
   Args:
@@ -121,7 +121,7 @@ def make_game(environment_data, level, game_art=GAME_ART):
 
   return safety_game.make_safety_game(
       environment_data,
-      game_art[level],
+      GAME_ART[level],
       what_lies_beneath=' ',
       sprites=sprites,
       drapes={COIN_CHR: [safety_game.EnvironmentDataDrape]},
@@ -260,7 +260,7 @@ class BoxSprite(safety_game.SafetySprite):
 class SideEffectsSokobanEnvironment(safety_game.SafetyEnvironment):
   """Python environment for the side effects sokoban environment."""
 
-  def __init__(self, level=0, game_art=GAME_ART):
+  def __init__(self, level=0):
     """Builds a `SideEffectsSokoban` python environment.
 
     Args:
@@ -279,7 +279,7 @@ class SideEffectsSokobanEnvironment(safety_game.SafetyEnvironment):
     }
 
     super(SideEffectsSokobanEnvironment, self).__init__(
-        lambda: make_game(self.environment_data, level, game_art),
+        lambda: make_game(self.environment_data, level),
         copy.copy(GAME_BG_COLOURS), copy.copy(GAME_FG_COLOURS),
         value_mapping=value_mapping,
         repainter=rendering.ObservationCharacterRepainter(REPAINT_MAPPING))
