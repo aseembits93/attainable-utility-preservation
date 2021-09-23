@@ -10,7 +10,7 @@ class ModelFreeAUPAgent:
     default = {'lambd': 1./1.501, 'discount': .996, 'rpenalties': 30, 'episodes': 6000}
 
     def __init__(self, env, lambd=default['lambd'], state_attainable=False, num_rewards=default['rpenalties'],
-                 discount=default['discount'], episodes=default['episodes'], trials=50, use_scale=False, use_true_reward=True):
+                 discount=default['discount'], episodes=default['episodes'], trials=50, use_scale=False, reward_model='env'):
         """Trains using the simulator and e-greedy exploration to determine a greedy policy.
 
         :param env: Simulator.
@@ -29,10 +29,11 @@ class ModelFreeAUPAgent:
         self.lambd = lambd
         self.state_attainable = state_attainable
         self.use_scale = use_scale
-        self.use_true_reward = use_true_reward
-        if not self.use_true_reward:
-            self.reward_model = defaultdict(np.random.uniform)
-
+        self.reward_model = reward_model
+        if self.reward_model is not 'env':
+            print("Using Custom Reward")
+        else :
+            print("Using Environmental Reward")
         if state_attainable:
             self.name = 'Relative reachability'
             self.attainable_set = environment_helper.derive_possible_rewards(env)
@@ -116,7 +117,7 @@ class ModelFreeAUPAgent:
                 new_Q, old_Q = self.attainable_Q[new_board][attainable_idx].max(), \
                                self.attainable_Q[last_board][attainable_idx, action]
             else:
-                if self.use_true_reward:
+                if self.reward_model is 'env':
                     reward = time_step.reward
                 else:
                     reward = self.reward_model[last_board] 

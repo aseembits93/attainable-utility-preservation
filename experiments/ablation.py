@@ -86,8 +86,8 @@ def run_agents(env_class, env_kwargs, render_ax=None):
     """
     # Instantiate environment and agents
     env = env_class(**env_kwargs)
-    model_free_true = ModelFreeAUPAgent(env, trials=1,use_true_reward=True)
-    model_free_random = ModelFreeAUPAgent(env, trials=1,use_true_reward=False)
+    model_free_true = ModelFreeAUPAgent(env, trials=1,reward_model='env')
+    model_free_random = ModelFreeAUPAgent(env, trials=1,reward_model=defaultdict(np.random.uniform))
     #state = (ModelFreeAUPAgent(env, state_attainable=True, trials=1))
 
     movies, agents = [], [#ModelFreeAUPAgent(env, num_rewards=0, trials=1),  # vanilla
