@@ -11,16 +11,29 @@ import warnings
 import numpy as np
 from collections import defaultdict
 
-def side_effect_performance(model_free_true,model_free_random,env,time_t):
-    #the discount factor would be the same for the true agent and random agent?
+
+def true_goal_performance(true_agent, prefix_agent, env, time_t):
+    """
+    Evaluate the prefix_agent policy on the true_goal objective in the env environment
+    Args:
+        true_agent: ModelFreeAUPAgent with
+        prefix_agent: ModelFreeAUPAgent with some "prefix" policy
+        env: ai safety gridworld environment
+        time_t: rollout length for prefix policy
+
+    Returns:
+    discounted true return under the prefix policy
+    """
     time_step = env.reset()
+    discount = true_agent.discount
     side_effect_score = 0
     for i in range(time_t):
         state = time_step.observation['board']
-        side_effect_score+=(model_free_true.discount**i)*model_free_random.reward_model[str(state)] #map 2dim state to some index for the reward array
-        time_step = env.step(model_free_random.act(time_step.observation))
-    side_effect_score+=(model_free_true.discount**time_t)*np.max(model_free_true.AUP_Q[str(state)])    
+        side_effect_score += (discount ** i) * true_agent.primary_reward[str(state)] #map 2dim state to some index for the reward array
+        time_step = env.step(prefix_agent.act(time_step.observation))
+    side_effect_score += (discount ** time_t) * np.max(true_agent.AUP_Q[str(state)])
     return side_effect_score
+
 
 def plot_images_to_ani(framesets):
     """
@@ -86,9 +99,9 @@ def run_agents(env_class, env_kwargs, game_name, render_ax=None):
     """
     # Instantiate environment and agents
     env = env_class(**env_kwargs)
-    #model_free_true = ModelFreeAUPAgent(env, trials=1,reward_model='env', game_name = game_name)
-    model_free_random = [ModelFreeAUPAgent(env, trials=1,reward_model=defaultdict(np.random.uniform),game_name = game_name, policy_idx=i) for i in range(10)]
-    model_free_standard = ModelFreeAUPAgent(env, num_rewards=0, trials=1, reward_model='env', game_name = game_name)
+    aup_agent = ModelFreeAUPAgent(env, trials=1, primary_reward='env', game_name = game_name)
+    random_reward_agents = [ModelFreeAUPAgent(env, trials=1, primary_reward=defaultdict(np.random.uniform), game_name = game_name, policy_idx=i) for i in range(10)]
+    standard_agent = ModelFreeAUPAgent(env, num_rewards=0, trials=1, primary_reward='env', game_name = game_name)
     #state = (ModelFreeAUPAgent(env, state_attainable=True, trials=1))
 
     # movies, agents = [], [#ModelFreeAUPAgent(env, num_rewards=0, trials=1),  # vanilla
@@ -97,12 +110,15 @@ def run_agents(env_class, env_kwargs, game_name, render_ax=None):
     #                     #   AUPAgent(attainable_Q=model_free.attainable_Q, deviation='decrease'),
     #                     #   AUPAgent(attainable_Q=state.attainable_Q, baseline='inaction', deviation='decrease'),  # RR
     #                     #   model_free,
-    #                       AUPAgent(attainable_Q=model_free_true.attainable_Q)  # full AUP
+    #                       AUPAgent(attainable_Q=aup_agent.attainable_Q)  # full AUP
     #                       ]
     movies = []
-    time_t = 10 #could be any number really 
-    for prefix_policy in model_free_random:
-        print("side effect score for time_t", time_t, side_effect_performance(model_free_standard,prefix_policy,env,time_t))
+    time_t = 10
+    for random_agent in random_reward_agents:
+        AUP_perf = true_goal_performance(true_agent=random_agent, prefix_agent=aup_agent, env=env, time_t=time_t)
+        standard_perf = true_goal_performance(true_agent=random_agent, prefix_agent=standard_agent, env=env, time_t=time_t)
+        residual = AUP_perf - standard_perf  # higher is better for AUP
+        print("AUP obtains " + str(residual) + " greater performance.")
         
         # ret, _, perf, frames = run_episode(agent, env, save_frames=True, render_ax=render_ax)
         # movies.append((agent.name, frames))
@@ -128,5 +144,3 @@ plt.style.use('ggplot')
 # Get individual game ablations
 for (game, kwargs) in games:
     run_game(game, kwargs)
-
-#do td learning twice, once with random reward, once with true reward. side effect is nothing but true reward till t then optimal value function

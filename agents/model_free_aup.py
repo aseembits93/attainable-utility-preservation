@@ -11,7 +11,7 @@ class ModelFreeAUPAgent:
     default = {'lambd': 1./1.501, 'discount': .996, 'rpenalties': 30, 'episodes': 6000}
 
     def __init__(self, env, lambd=default['lambd'], state_attainable=False, num_rewards=default['rpenalties'],
-                 discount=default['discount'], episodes=default['episodes'], trials=50, use_scale=False, reward_model='env',policy_idx=0, game_name='name'):
+                 discount=default['discount'], episodes=default['episodes'], trials=50, use_scale=False, primary_reward='env', policy_idx=0, game_name='name'):
         """Trains using the simulator and e-greedy exploration to determine a greedy policy.
 
         :param env: Simulator.
@@ -30,7 +30,7 @@ class ModelFreeAUPAgent:
         self.lambd = lambd
         self.state_attainable = state_attainable
         self.use_scale = use_scale
-        self.reward_model = reward_model
+        self.primary_reward = primary_reward
         
         if state_attainable:
             self.name = 'Relative_reachability'
@@ -40,11 +40,13 @@ class ModelFreeAUPAgent:
 
         if len(self.attainable_set) == 0:
             self.name = 'Standard'  # no penalty applied!
-        if self.reward_model is not 'env':
+
+        if self.primary_reward is not 'env':
             print("Using Custom Reward")
             self.name = self.name+" with custom reward"
-        else :
+        else:
             print("Using Environmental Reward")
+
         self.policy_idx = str(policy_idx)
         self.game_name=game_name
         self.train(env)
@@ -125,10 +127,10 @@ class ModelFreeAUPAgent:
                 new_Q, old_Q = self.attainable_Q[new_board][attainable_idx].max(), \
                                self.attainable_Q[last_board][attainable_idx, action]
             else:
-                if self.reward_model is 'env':
+                if self.primary_reward is 'env':
                     reward = time_step.reward
                 else:
-                    reward = self.reward_model[last_board] 
+                    reward = self.primary_reward[last_board]
                 reward = reward - self.get_penalty(last_board, action)
                 
                 new_Q, old_Q = self.AUP_Q[new_board].max(), self.AUP_Q[last_board][action]
