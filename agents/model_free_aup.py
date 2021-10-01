@@ -2,15 +2,16 @@ from ai_safety_gridworlds.environments.shared import safety_game
 from collections import defaultdict
 import experiments.environment_helper as environment_helper
 import numpy as np
-
+import pickle
+import ipdb as pdb
 
 class ModelFreeAUPAgent:
-    name = "Model-free AUP"
+    name = "Model_free_AUP"
     pen_epsilon, AUP_epsilon = .2, .9  # chance of choosing greedy action in training
     default = {'lambd': 1./1.501, 'discount': .996, 'rpenalties': 30, 'episodes': 6000}
 
     def __init__(self, env, lambd=default['lambd'], state_attainable=False, num_rewards=default['rpenalties'],
-                 discount=default['discount'], episodes=default['episodes'], trials=50, use_scale=False, reward_model='env'):
+                 discount=default['discount'], episodes=default['episodes'], trials=50, use_scale=False, reward_model='env',policy_idx=0, game_name='name'):
         """Trains using the simulator and e-greedy exploration to determine a greedy policy.
 
         :param env: Simulator.
@@ -30,19 +31,22 @@ class ModelFreeAUPAgent:
         self.state_attainable = state_attainable
         self.use_scale = use_scale
         self.reward_model = reward_model
-        if self.reward_model is not 'env':
-            print("Using Custom Reward")
-        else :
-            print("Using Environmental Reward")
+        
         if state_attainable:
-            self.name = 'Relative reachability'
+            self.name = 'Relative_reachability'
             self.attainable_set = environment_helper.derive_possible_rewards(env)
         else:
             self.attainable_set = [defaultdict(np.random.random) for _ in range(num_rewards)]
 
         if len(self.attainable_set) == 0:
             self.name = 'Standard'  # no penalty applied!
-
+        if self.reward_model is not 'env':
+            print("Using Custom Reward")
+            self.name = self.name+" with custom reward"
+        else :
+            print("Using Environmental Reward")
+        self.policy_idx = str(policy_idx)
+        self.game_name=game_name
         self.train(env)
 
     def train(self, env):
@@ -72,6 +76,10 @@ class ModelFreeAUPAgent:
             self.counts[int(self.performance[trial, -1]) + 2] += 1  # -2 goes to idx 0
 
         env.reset()
+        print("saving q function")
+        with open('results/policy_'+self.name+'_'+self.game_name+'_'+self.policy_idx+'.pkl','wb') as f:
+            pickle.dump(dict(self.AUP_Q),f)
+
 
     def act(self, obs):
         return self.AUP_Q[str(obs['board'])].argmax()

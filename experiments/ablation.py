@@ -53,30 +53,30 @@ def plot_images_to_ani(framesets):
 
 
 def run_game(game, kwargs):
-    render_fig, render_ax = plt.subplots(1, 1)
-    render_fig.set_tight_layout(True)
-    render_ax.get_xaxis().set_ticks([])
-    render_ax.get_yaxis().set_ticks([])
+    # render_fig, render_ax = plt.subplots(1, 1)
+    # render_fig.set_tight_layout(True)
+    # render_ax.get_xaxis().set_ticks([])
+    # render_ax.get_yaxis().set_ticks([])
     game.variant_name = game.name + '-' + str(kwargs['level'] if 'level' in kwargs else kwargs['variant'])
     print(game.variant_name)
 
     start_time = datetime.datetime.now()
-    movies = run_agents(game, kwargs, render_ax=render_ax)
-
-    # Save first frame of level for display in paper
-    render_ax.imshow(movies[0][1][0])
-    render_fig.savefig(os.path.join(os.path.dirname(__file__), 'level_imgs', game.variant_name + '.pdf'),
-                       bbox_inches='tight', dpi=350)
-    plt.close(render_fig.number)
+    movies = run_agents(game, kwargs, game.variant_name)
+    #print()
+    # # Save first frame of level for display in paper
+    # render_ax.imshow(movies[0][1][0])
+    # render_fig.savefig(os.path.join(os.path.dirname(__file__), 'level_imgs', game.variant_name + '.pdf'),
+    #                    bbox_inches='tight', dpi=350)
+    # plt.close(render_fig.number)
 
     print("Training finished; {} elapsed.\n".format(datetime.datetime.now() - start_time))
-    ani = plot_images_to_ani(movies)
-    ani.save(os.path.join(os.path.dirname(__file__), 'gifs', game.variant_name + '.gif'),
-             writer='imagemagick', dpi=350)
+    # ani = plot_images_to_ani(movies)
+    # ani.save(os.path.join(os.path.dirname(__file__), 'gifs', game.variant_name + '.gif'),
+    #          writer='imagemagick', dpi=350)
     #plt.show()
 
 
-def run_agents(env_class, env_kwargs, render_ax=None):
+def run_agents(env_class, env_kwargs, game_name, render_ax=None):
     """
     Generate and run agent variants.
 
@@ -86,24 +86,27 @@ def run_agents(env_class, env_kwargs, render_ax=None):
     """
     # Instantiate environment and agents
     env = env_class(**env_kwargs)
-    model_free_true = ModelFreeAUPAgent(env, trials=1,reward_model='env')
-    model_free_random = ModelFreeAUPAgent(env, trials=1,reward_model=defaultdict(np.random.uniform))
+    #model_free_true = ModelFreeAUPAgent(env, trials=1,reward_model='env', game_name = game_name)
+    model_free_random = [ModelFreeAUPAgent(env, trials=1,reward_model=defaultdict(np.random.uniform),game_name = game_name, policy_idx=i) for i in range(10)]
+    model_free_standard = ModelFreeAUPAgent(env, num_rewards=0, trials=1, reward_model='env', game_name = game_name)
     #state = (ModelFreeAUPAgent(env, state_attainable=True, trials=1))
 
-    movies, agents = [], [#ModelFreeAUPAgent(env, num_rewards=0, trials=1),  # vanilla
-                        #   AUPAgent(attainable_Q=model_free.attainable_Q, baseline='start'),
-                        #   AUPAgent(attainable_Q=model_free.attainable_Q, baseline='inaction'),
-                        #   AUPAgent(attainable_Q=model_free.attainable_Q, deviation='decrease'),
-                        #   AUPAgent(attainable_Q=state.attainable_Q, baseline='inaction', deviation='decrease'),  # RR
-                        #   model_free,
-                          AUPAgent(attainable_Q=model_free_true.attainable_Q)  # full AUP
-                          ]
+    # movies, agents = [], [#ModelFreeAUPAgent(env, num_rewards=0, trials=1),  # vanilla
+    #                     #   AUPAgent(attainable_Q=model_free.attainable_Q, baseline='start'),
+    #                     #   AUPAgent(attainable_Q=model_free.attainable_Q, baseline='inaction'),
+    #                     #   AUPAgent(attainable_Q=model_free.attainable_Q, deviation='decrease'),
+    #                     #   AUPAgent(attainable_Q=state.attainable_Q, baseline='inaction', deviation='decrease'),  # RR
+    #                     #   model_free,
+    #                       AUPAgent(attainable_Q=model_free_true.attainable_Q)  # full AUP
+    #                       ]
+    movies = []
     time_t = 10 #could be any number really 
-    for agent in agents:
-        print("side effect score for time_t", time_t, side_effect_performance(model_free_true,model_free_random,env,time_t))
-        ret, _, perf, frames = run_episode(agent, env, save_frames=True, render_ax=render_ax)
-        movies.append((agent.name, frames))
-        print(agent.name, perf)
+    for prefix_policy in model_free_random:
+        print("side effect score for time_t", time_t, side_effect_performance(model_free_standard,prefix_policy,env,time_t))
+        
+        # ret, _, perf, frames = run_episode(agent, env, save_frames=True, render_ax=render_ax)
+        # movies.append((agent.name, frames))
+        # print(agent.name, perf)
 
     return movies
 
@@ -112,7 +115,7 @@ games = [#(conveyor.ConveyorEnvironment, {'variant': 'vase'}),
          #(conveyor.ConveyorEnvironment, {'variant': 'sushi'}),
          #(burning.BurningEnvironment, {'level': 0}),
          #(burning.BurningEnvironment, {'level': 1}),
-         (box.BoxEnvironment, {'level': 0}),
+         #(box.BoxEnvironment, {'level': 0}),
          #(sushi.SushiEnvironment, {'level': 0}),
          #(vase.VaseEnvironment, {'level': 0}),
          (dog.DogEnvironment, {'level': 0}),
