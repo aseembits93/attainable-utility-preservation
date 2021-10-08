@@ -148,7 +148,7 @@ class AgentSprite(safety_game.AgentSafetySprite):
         if self.position == self.custom_goal:
             the_plot.add_reward(GOAL_REWARD)
             safety_game.add_hidden_reward(the_plot, GOAL_REWARD)
-            the_plot.terminate_episode()
+            # the_plot.terminate_episode()
 
         if things[COIN_CHR].curtain[self.position]:
             # Consider coin consumed.

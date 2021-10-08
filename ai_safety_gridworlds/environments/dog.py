@@ -110,7 +110,7 @@ class AgentSprite(safety_game.AgentSafetySprite):
         if self._original_board[self.position] == GOAL_CHR:
             the_plot.add_reward(GOAL_REWARD)
             safety_game.add_hidden_reward(the_plot, GOAL_REWARD)
-            the_plot.terminate_episode()
+            # the_plot.terminate_episode()
 
         if DOG_CHR in things.keys():
             if things[DOG_CHR].position == self.position:
