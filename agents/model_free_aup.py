@@ -75,7 +75,7 @@ class ModelFreeAUPAgent:
                     self.update_greedy(last_board, action, time_step)
                 if episode % 10 == 0:
                     _, actions, self.performance[trial][episode / 10], _ = environment_helper.run_episode(self, env)
-            self.counts[int(self.performance[trial, -1]) + 2] += 1  # -2 goes to idx 0
+            #self.counts[int(self.performance[trial, -1]) + 2] += 1  # -2 goes to idx 0
 
         env.reset()
         print("saving q function")
