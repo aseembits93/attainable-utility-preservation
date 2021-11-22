@@ -4,6 +4,7 @@ from ai_safety_gridworlds.environments import *
 from agents.model_free_aup import ModelFreeAUPAgent
 from environment_helper import *
 import datetime
+from agents.QLearning import QLearner
 import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -99,9 +100,9 @@ def run_agents(env_class, env_kwargs, game_name, render_ax=None):
     """
     # Instantiate environment and agents
     env = env_class(**env_kwargs)
-    aup_agent = ModelFreeAUPAgent(env, primary_reward='env', game_name = game_name)
-    random_reward_agents = [ModelFreeAUPAgent(env, primary_reward=defaultdict(np.random.uniform), game_name = game_name, policy_idx=i) for i in range(10)]
-    standard_agent = ModelFreeAUPAgent(env, num_rewards=0, primary_reward='env', game_name = game_name)
+    aup_agent = ModelFreeAUPAgent(env)
+    random_reward_agents = [QLearner(env, primary_reward=defaultdict(np.random.uniform), policy_idx=i) for i in range(10)]
+    standard_agent = QLearner(env)
 
     agents = [aup_agent, standard_agent]
     agents.extend(random_reward_agents)
@@ -109,12 +110,12 @@ def run_agents(env_class, env_kwargs, game_name, render_ax=None):
         agent.train(env)
 
     # movies, agents = [], [#ModelFreeAUPAgent(env, num_rewards=0, trials=1),  # vanilla
-    #                     #   AUPAgent(attainable_Q=model_free.attainable_Q, baseline='start'),
-    #                     #   AUPAgent(attainable_Q=model_free.attainable_Q, baseline='inaction'),
-    #                     #   AUPAgent(attainable_Q=model_free.attainable_Q, deviation='decrease'),
-    #                     #   AUPAgent(attainable_Q=state.attainable_Q, baseline='inaction', deviation='decrease'),  # RR
+    #                     #   AUPAgent(auxiliary_Q=model_free.auxiliary_Q, baseline='start'),
+    #                     #   AUPAgent(auxiliary_Q=model_free.auxiliary_Q, baseline='inaction'),
+    #                     #   AUPAgent(auxiliary_Q=model_free.auxiliary_Q, deviation='decrease'),
+    #                     #   AUPAgent(auxiliary_Q=state.auxiliary_Q, baseline='inaction', deviation='decrease'),  # RR
     #                     #   model_free,
-    #                       AUPAgent(attainable_Q=aup_agent.attainable_Q)  # full AUP
+    #                       AUPAgent(auxiliary_Q=aup_agent.auxiliary_Q)  # full AUP
     #                       ]
     movies = []
     time_t = 10

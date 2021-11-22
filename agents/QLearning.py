@@ -5,16 +5,14 @@ import pickle
 
 class QLearner:
     name = "Q-learner"
-    default = {'lambd': 1. / 1.501, 'discount': .996, 'rpenalties': 15, 'episodes': 600}
 
-    def __init__(self, env, discount=default['discount'], episodes=default['episodes'], epsilon=.9, primary_reward='env'):
+    def __init__(self, env, discount=.996, episodes=6000, epsilon=.9, primary_reward='env', policy_idx=0):
         """Trains using the simulator and e-greedy exploration to determine a greedy policy.
 
         :param env: Simulator.
         :param discount:
         :param episodes:
-        :param trials:
-        :
+
         """
         self.actions = range(env.action_spec().maximum + 1)
 
@@ -30,6 +28,10 @@ class QLearner:
 
         self.episodes = episodes  # The number of training episodes
 
+        # Metadata for saving Q-function
+        self.policy_idx = str(policy_idx)
+        self.game_name = env.name
+
     def train(self, env):
         for episode in range(self.episodes):
             time_step = env.reset()
@@ -40,10 +42,12 @@ class QLearner:
                 self.update_greedy(last_board, action, time_step)
         env.reset()
 
-        # TODO clean this up
-        # print("Saving Q-function")
-        # with open('results/policy_' + self.name + '_' + self.game_name + '_' + self.policy_idx + '.pkl', 'wb') as f:
-        #     pickle.dump(dict(self.Q), f)
+        self.save()  # Save the learned Q-function
+
+    def save(self):
+        print("Saving Q-function")
+        with open('results/policy_' + self.name + '_' + self.game_name + '_' + self.policy_idx + '.pkl', 'wb') as f:
+            pickle.dump(dict(self.Q), f)
 
     def act(self, obs):
         return self.Q[str(obs['board'])].argmax()
