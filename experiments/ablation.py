@@ -31,7 +31,7 @@ def true_goal_performance(true_agent, prefix_agent, env, time_t):
         state = time_step.observation['board']
         side_effect_score += (discount ** i) * true_agent.primary_reward[str(state)] #map 2dim state to some index for the reward array
         time_step = env.step(prefix_agent.act(time_step.observation))
-    side_effect_score += (discount ** time_t) * np.max(true_agent.AUP_Q[str(state)])
+    side_effect_score += (discount ** time_t) * np.max(true_agent.Q[str(state)])
     return side_effect_score
 
 
@@ -99,10 +99,14 @@ def run_agents(env_class, env_kwargs, game_name, render_ax=None):
     """
     # Instantiate environment and agents
     env = env_class(**env_kwargs)
-    aup_agent = ModelFreeAUPAgent(env, trials=1, primary_reward='env', game_name = game_name)
-    random_reward_agents = [ModelFreeAUPAgent(env, trials=1, primary_reward=defaultdict(np.random.uniform), game_name = game_name, policy_idx=i) for i in range(10)]
-    standard_agent = ModelFreeAUPAgent(env, num_rewards=0, trials=1, primary_reward='env', game_name = game_name)
-    #state = (ModelFreeAUPAgent(env, state_attainable=True, trials=1))
+    aup_agent = ModelFreeAUPAgent(env, primary_reward='env', game_name = game_name)
+    random_reward_agents = [ModelFreeAUPAgent(env, primary_reward=defaultdict(np.random.uniform), game_name = game_name, policy_idx=i) for i in range(10)]
+    standard_agent = ModelFreeAUPAgent(env, num_rewards=0, primary_reward='env', game_name = game_name)
+
+    agents = [aup_agent, standard_agent]
+    agents.extend(random_reward_agents)
+    for agent in agents:
+        agent.train(env)
 
     # movies, agents = [], [#ModelFreeAUPAgent(env, num_rewards=0, trials=1),  # vanilla
     #                     #   AUPAgent(attainable_Q=model_free.attainable_Q, baseline='start'),
