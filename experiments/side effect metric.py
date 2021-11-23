@@ -69,7 +69,7 @@ def run_agents(env_class, env_kwargs):
 
     true_agents = random_reward_agents + [intended_agent] + [anti_intended_agent]
 
-    for agent in evaluation_agents + true_agents:
+    for agent in evaluation_agents + random_reward_agents:
         agent.train(env)
 
     correction_time = 10
