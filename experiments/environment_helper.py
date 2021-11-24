@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from agents.aup import AUPAgent
 from ai_safety_gridworlds.environments.shared import safety_game
+from collections import defaultdict
 
 
 def derive_possible_rewards(env):
@@ -34,6 +35,43 @@ def derive_possible_rewards(env):
     explore(env)
     env.reset()
     return functions
+
+
+def derive_MDP(env, reward_fn=None):
+    """
+    Use depth-first-search to back out transition matrix and reward function from simulator. Assumes determinism.
+
+    :param env:
+    """
+    mdp = defaultdict(lambda: [set(), 0.0])  # ({reachable successors}, state reward)
+
+    def explore(env, so_far=[]):  # visit all possible states
+        board_str = str(env._last_observations['board'])
+        if board_str not in mdp.keys():
+            for action in range(env.action_spec().maximum + 1):
+                time_step = env.step(action)
+                new_str = str(env._last_observations['board'])
+                mdp[board_str][0].add(new_str)  # Note that transition is possible
+                explore(env, so_far + [action])
+
+                # Note: Will not record reward for initial state unless it can be reached on another timestep
+                mdp[new_str][1] = reward_fn[str(env._last_observations['board'])] if reward_fn is not None else time_step.reward
+                AUPAgent.restart(env, so_far)
+
+    env.reset()
+    explore(env)
+    env.reset()  # We now know state rewards and their successors
+
+    # Go from dictionary with successors to a sparse n x n matrix
+    transitions = np.zeros((len(mdp.keys()), len(mdp.keys())))
+    reward_vec = np.zeros(len(mdp.keys()))
+    for key, val in mdp.items():
+        key_idx = mdp.keys().index(key)
+        reward_vec[key_idx] = val[1]
+        for succ in val[0]:
+            transitions[key_idx][mdp.keys().index(succ)] = 1
+
+    return transitions, reward_vec
 
 
 def run_episode(agent, env, save_frames=False, render_ax=None, max_len=9, offline=False):

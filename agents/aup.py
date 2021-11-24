@@ -73,7 +73,8 @@ class AUPAgent():
         """Reset the environment and return the result of executing the action sequence."""
         time_step = env.reset()
         for action in actions:
-            if time_step.last(): break
+            if time_step.last():
+                break
             time_step = env.step(action)
 
     def penalized_reward(self, env, action, steps_left, so_far=[]):

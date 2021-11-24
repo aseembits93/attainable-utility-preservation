@@ -9,7 +9,7 @@ from QLearning import QLearner
 class ModelFreeAUPAgent(QLearner):
     name = "Model_free_AUP"
     pen_epsilon, AUP_epsilon = .2, .9  # chance of choosing greedy action in training
-    default = {'lambd': 1. / 1.501, 'discount': .996, 'rpenalties': 15, 'episodes': 600}
+    default = {'lambd': 1. / 1.501, 'discount': .996, 'rpenalties': 15, 'episodes': 6000}
 
     def __init__(self, env, lambd=default['lambd'], state_attainable=False, num_rewards=default['rpenalties'],
                  discount=default['discount'], episodes=default['episodes'],
@@ -36,7 +36,8 @@ class ModelFreeAUPAgent(QLearner):
             self.auxiliary_rewards = [defaultdict(np.random.random) for _ in range(num_rewards)]
 
         # Initialize tabular Q-functions for auxiliary reward functions, in addition to inherited self.Q
-        self.auxiliary_Q = defaultdict(lambda: np.zeros((len(self.auxiliary_rewards), len(self.actions))))
+        self.auxiliary_Q = [defaultdict(lambda: np.zeros(len(self.actions)))] * len(self.auxiliary_rewards)
+
 
     def train(self, env):
         self.performance = np.zeros(self.episodes / 10)
@@ -60,8 +61,8 @@ class ModelFreeAUPAgent(QLearner):
 
     def get_penalty(self, board, action):
         if len(self.auxiliary_rewards) == 0: return 0
-        action_attainable = self.auxiliary_Q[board][:, action]
-        null_attainable = self.auxiliary_Q[board][:, safety_game.Actions.NOTHING]
+        action_attainable = np.array([Q[board][action] for Q in self.auxiliary_Q])
+        null_attainable = np.array([Q[board][safety_game.Actions.NOTHING] for Q in self.auxiliary_Q])
 
         # Difference between taking action and doing nothing
         return self.lambd * sum(abs(action_attainable - null_attainable))
@@ -76,8 +77,8 @@ class ModelFreeAUPAgent(QLearner):
             if auxiliary_idx is not None:
                 reward = self.auxiliary_rewards[auxiliary_idx](new_board) if self.state_attainable \
                     else self.auxiliary_rewards[auxiliary_idx][new_board]
-                new_Q, old_Q = self.auxiliary_Q[new_board][auxiliary_idx].max(), \
-                               self.auxiliary_Q[last_board][auxiliary_idx, action]
+                new_Q, old_Q = self.auxiliary_Q[auxiliary_idx][new_board].max(), \
+                               self.auxiliary_Q[auxiliary_idx][last_board][action]
             else:
                 if self.primary_reward is 'env':
                     reward = time_step.reward
@@ -90,9 +91,10 @@ class ModelFreeAUPAgent(QLearner):
 
         # Learn the attainable reward functions
         for attainable_idx in range(len(self.auxiliary_rewards)):
-            self.auxiliary_Q[last_board][attainable_idx, action] += calculate_update(attainable_idx)
+            self.auxiliary_Q[attainable_idx][last_board][action] += calculate_update(attainable_idx)
 
         # Clip Q-values to be state reachability indicators -- 0 if unreachable, 1 otherwise
         if self.state_attainable:
-            self.auxiliary_Q[last_board][:, action] = np.clip(self.auxiliary_Q[last_board][:, action], 0, 1)
+            for idx in range(len(self.auxiliary_Q)):
+                self.auxiliary_Q[idx][last_board][action] = np.clip(self.auxiliary_Q[idx][last_board][action], 0, 1)
         self.Q[last_board][action] += calculate_update()

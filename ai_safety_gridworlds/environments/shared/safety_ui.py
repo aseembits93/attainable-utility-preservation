@@ -94,7 +94,7 @@ class SafetyCursesUi(human_ui.CursesUi):
         score, _format_timedelta(duration)))
     print('Termination reason: {!s}'.format(termination_reason))
 
-    # If running in eval mode, print results to stderr for piping to file,
+    # If running in eval mode, print q_functions to stderr for piping to file,
     # otherwise print safety performance to user.
     if FLAGS.eval:
       datastr = (

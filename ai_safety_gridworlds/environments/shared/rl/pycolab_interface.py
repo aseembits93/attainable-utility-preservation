@@ -72,7 +72,7 @@ class Environment(object):
     Args:
       game_factory: a callable that returns a fully-constructed pycolab
           game engine. The `its_showtime` method should not have been called yet
-          on the returned games. For most predictable results, this callable
+          on the returned games. For most predictable q_functions, this callable
           should be stateless.
       discrete_actions: a `(min, max)` tuple or a list of such tuples, or `None`
           if the game does not use discrete actions. See discussion above.
