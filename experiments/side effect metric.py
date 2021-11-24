@@ -60,8 +60,8 @@ def run_agents(env_class, env_kwargs):
     evaluation_agents = [aup_agent, standard_agent]
 
     # Learn Q-functions for ground-truth reward functions
-    random_reward_agents = [QLearner(env, primary_reward=defaultdict(np.random.uniform), policy_idx=i) for i in
-                            range(10)]  # Make 10 ground-truth reward agents
+    random_reward_agents = [QLearner(env, primary_reward=defaultdict(np.random.uniform), policy_idx=i+1) for i in
+                            range(20)]  # Make 10 ground-truth reward agents
 
     # TODO code these objectives
     intended_agent = QLearner(env)  # Agent optimizing R := 2 * (goal reached?) - 1 * (side effect had?)
