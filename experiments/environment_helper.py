@@ -67,7 +67,10 @@ def run_episode(agent, env, save_frames=False, render_ax=None, max_len=9, offlin
         if time_step.last() or i >= max_len:
             break
         if not hasattr(agent, 'get_actions'):
-            actions.append(agent.act(time_step.observation))
+            if offline:
+                actions.append(agent[str(time_step.observation['board'])].argmax())
+            else:
+                actions.append(agent.act(time_step.observation))
         time_step = env.step(actions[i])
         handle_frame(time_step)
     return float(env.episode_return), actions, float(env._get_hidden_reward()), frames

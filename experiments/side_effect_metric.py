@@ -13,6 +13,8 @@ from collections import defaultdict
 import imageio
 import cv2
 from environment_helper import run_episode
+import pickle
+import glob
 
 def true_goal_performance(true_agent, prefix_agent, env, correction_time):
     """
@@ -51,7 +53,8 @@ def plot_images_to_ani(framesets):
 
 def run_game(game, kwargs):
     start_time = datetime.datetime.now()
-    residuals, movies = run_agents(game, kwargs)
+    #residuals, movies = run_agents(game, kwargs)
+    residuals, movies = run_agents_offline(game, kwargs)
     print("Training finished; {} elapsed.\n".format(datetime.datetime.now() - start_time))
     # TODO violin plots here
     plot_images_to_ani(movies)
@@ -97,6 +100,42 @@ def run_agents(env_class, env_kwargs):
         print("AUP obtains " + str(residuals[-1]) + " greater performance.")
     return residuals, movies
 
+def run_agents_offline(env_class, env_kwargs):
+    """
+    Generate and run agent variants.
+
+    :param env_class: class object.
+    :param env_kwargs: environmental intialization parameters.
+    :param render_ax: PyPlot axis on which rendering can take place.
+    """
+    # Instantiate environment and agents
+    env = env_class(**env_kwargs)
+              
+    custom_reward_agents = dict()
+    standard_agent = dict()
+    aup_agent = dict()
+    game_name = env_class.name
+    for file in sorted(glob.glob('results/policy_Q*'+game_name+'*.pkl')):
+        with open(file,'rb') as f:
+            custom_reward_agents[file]=pickle.load(f)    
+    for file in sorted(glob.glob('results/*_AUP_'+game_name+'*.pkl')):
+        with open(file,'rb') as f:
+            aup_agent[file]=pickle.load(f)    
+    for file in sorted(glob.glob('results/*_Standard_'+game_name+'*.pkl')):
+        with open(file,'rb') as f:
+            standard_agent[file]=pickle.load(f)          
+    movies = list()
+    time_t = 10
+    for agent_name, agent in custom_reward_agents.items():
+        ret, _, perf, frames = run_episode(agent, env, save_frames=True, offline=True)
+        movies.append((agent_name,frames))
+    for agent_name, agent in standard_agent.items():
+        ret, _, perf, frames = run_episode(agent, env, save_frames=True, offline=True)
+        movies.append((agent_name,frames))
+    for agent_name, agent in aup_agent.items():
+        ret, _, perf, frames = run_episode(agent, env, save_frames=True, offline=True)
+        movies.append((agent_name,frames))        
+    return 0,movies
 
 games = [(box.BoxEnvironment, {'level': 0}), (dog.DogEnvironment, {'level': 0})]
 
