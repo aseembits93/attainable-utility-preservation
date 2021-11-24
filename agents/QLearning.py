@@ -1,6 +1,7 @@
 from collections import defaultdict
 import numpy as np
 import pickle
+import os
 
 
 class QLearner:
@@ -45,8 +46,10 @@ class QLearner:
         self.save()  # Save the learned Q-function
 
     def save(self):
-        print("Saving Q-function for" + self.name)
-        with open('./results/policy_' + self.name + '_' + self.game_name + '_' + self.policy_idx + '.pkl', 'w+b') as f:
+        write_name = 'results/policy_' + self.name + '_' + self.game_name + '_' + self.policy_idx + '.pkl'
+        if not os.path.exists('./results/'):
+            os.makedirs('./results/')
+        with open(write_name, 'wb') as f:
             pickle.dump(dict(self.Q), f)
 
     def act(self, obs):
