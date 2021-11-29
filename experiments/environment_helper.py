@@ -51,27 +51,27 @@ def derive_MDP(env, reward_fn=None):
             for action in range(env.action_spec().maximum + 1):
                 time_step = env.step(action)
                 new_str = str(env._last_observations['board'])
-                mdp[board_str][0].add(new_str)  # Note that transition is possible
+                mdp[board_str][0].add((action, new_str))  # Note that (board_str -> action -> new_str) transition is possible
                 explore(env, so_far + [action])
 
                 # Note: Will not record reward for initial state unless it can be reached on another timestep
-                mdp[new_str][1] = reward_fn[str(env._last_observations['board'])] if reward_fn is not None else time_step.reward
+                mdp[new_str][1] = reward_fn[str(env._last_observations['board'])] if reward_fn not in (None, 'env') else time_step.reward
                 AUPAgent.restart(env, so_far)
 
     env.reset()
     explore(env)
-    env.reset()  # We now know state rewards and their successors
+    env.reset()  # We now know state rewards and transitions
 
     # Go from dictionary with successors to a sparse n x n matrix
-    transitions = np.zeros((len(mdp.keys()), len(mdp.keys())))
+    transitions = np.zeros((env.action_spec().maximum + 1, len(mdp.keys()), len(mdp.keys()))) # |A| x |S| x |S|
     reward_vec = np.zeros(len(mdp.keys()))
+    str_map = lambda state_string: mdp.keys().index(state_string)
     for key, val in mdp.items():
-        key_idx = mdp.keys().index(key)
-        reward_vec[key_idx] = val[1]
-        for succ in val[0]:
-            transitions[key_idx][mdp.keys().index(succ)] = 1
+        reward_vec[str_map(key)] = val[1]
+        for act, succ in val[0]:
+            transitions[act][str_map(key)][str_map(succ)] = 1
 
-    return transitions, reward_vec
+    return transitions, reward_vec, str_map
 
 
 def run_episode(agent, env, save_frames=False, render_ax=None, max_len=9, offline=False):

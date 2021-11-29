@@ -9,11 +9,9 @@ from QLearning import QLearner
 class ModelFreeAUPAgent(QLearner):
     name = "Model_free_AUP"
     pen_epsilon, AUP_epsilon = .2, .9  # chance of choosing greedy action in training
-    default = {'lambd': 1. / 1.501, 'discount': .996, 'rpenalties': 15, 'episodes': 6000}
 
-    def __init__(self, env, lambd=default['lambd'], state_attainable=False, num_rewards=default['rpenalties'],
-                 discount=default['discount'], episodes=default['episodes'],
-                 primary_reward='env', policy_idx=0):
+    def __init__(self, env, lambd=1. / 1.501, state_attainable=False, num_rewards=15,
+                 discount=.996, episodes=6000, primary_reward='env', policy_idx=0):
         """Trains using the simulator and e-greedy exploration to determine a greedy policy.
 
         :param env: Simulator.
