@@ -6,7 +6,7 @@ import mdptoolbox
 class ExactSolver(Agent):
     def solve(self, env):
         P, R, self.str_map = derive_MDP(env, reward_fn=self.primary_reward)
-        ql = mdptoolbox.mdp.QLearning(P, R, self.discount, n_iter=1e8)
+        ql = mdptoolbox.mdp.QLearning(P, R, self.discount, n_iter=1e5)
         ql.run()
         self.Q = ql.Q
 

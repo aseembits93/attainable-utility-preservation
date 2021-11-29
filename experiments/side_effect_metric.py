@@ -1,17 +1,14 @@
 from __future__ import print_function
 
-import seaborn as sns
-
-#sns.set_theme(style="whitegrid")
-
+from agents.ExactSolver import ExactSolver
 from ai_safety_gridworlds.environments import *
 from agents.model_free_aup import ModelFreeAUPAgent
 import datetime
 from agents.QLearning import QLearner
 import numpy as np
 from collections import defaultdict
-import imageio
-import cv2
+#import imageio
+#import cv2
 from environment_helper import run_episode
 import pickle
 import glob
@@ -32,11 +29,11 @@ def true_goal_performance(true_agent, prefix_agent, env, correction_time):
     discount = true_agent.discount
     side_effect_score = 0
     for i in range(correction_time):
-        state = time_step.observation['board']
-        side_effect_score += (discount ** i) * true_agent.primary_reward[
-            str(state)]
+        state_idx = true_agent.str_map(str(time_step.observation['board']))
+        side_effect_score += (discount ** i) * true_agent.primary_reward[state_idx]
         time_step = env.step(prefix_agent.act(time_step.observation))
-    side_effect_score += (discount ** correction_time) * np.max(true_agent.Q[str(state)])
+    state_idx = true_agent.str_map(str(time_step.observation['board']))
+    side_effect_score += (discount ** correction_time) * np.max(true_agent.Q[state_idx])
     return side_effect_score
 
 def plot_images_to_ani(framesets):
@@ -75,29 +72,31 @@ def run_agents(env_class, env_kwargs):
     evaluation_agents = [aup_agent, standard_agent]
 
     # Learn Q-functions for ground-truth reward functions
-    random_reward_agents = [QLearner(env, primary_reward=defaultdict(np.random.uniform), policy_idx=i+1) for i in
-                            range(20)]  # Make 10 ground-truth reward agents
+    random_reward_agents = [ExactSolver(env, primary_reward=defaultdict(np.random.uniform), policy_idx=i+1, epsilon=.2)
+                            for i in range(1)]
+    intended_agent = ExactSolver(env, primary_reward=env._get_true_reward,
+                                 epsilon=.2)  # Agent optimizing R := 2 * (goal reached?) - 1 * (side effect had?)
+    anti_intended_agent = ExactSolver(env, primary_reward=lambda state: -1 * env._get_true_reward(state),
+                                      epsilon=.2)  # Agent optimizing -1 * reward of intended_agent
+    true_agents = random_reward_agents + [intended_agent, anti_intended_agent]
 
-    # TODO code these objectives
-    intended_agent = QLearner(env)  # Agent optimizing R := 2 * (goal reached?) - 1 * (side effect had?)
-    anti_intended_agent = QLearner(env)  # Agent optimizing -1 * reward of intended_agent
+    for agent in evaluation_agents + true_agents:
+        if isinstance(agent, QLearner):
+            agent.train(env)
+        else:
+            agent.solve(env)
 
-    true_agents = random_reward_agents + [intended_agent] + [anti_intended_agent]
-
-    movies=list()
-    for agent in evaluation_agents + random_reward_agents:
-        agent.train(env)
-        movies.append((agent.write_name,run_episode(agent, env,save_frames=True)[3]))
     correction_time = 10
     residuals = []
-    for random_agent in random_reward_agents:
-        AUP_perf = true_goal_performance(true_agent=random_agent, prefix_agent=aup_agent, env=env,
+    for true_agent in true_agents:
+        AUP_perf = true_goal_performance(true_agent=true_agent, prefix_agent=aup_agent, env=env,
                                          correction_time=correction_time)
-        standard_perf = true_goal_performance(true_agent=random_agent, prefix_agent=standard_agent, env=env,
+        standard_perf = true_goal_performance(true_agent=true_agent, prefix_agent=standard_agent, env=env,
                                               correction_time=correction_time)
         residuals.append(AUP_perf - standard_perf)  # higher is better for AUP
         print("AUP obtains " + str(residuals[-1]) + " greater performance.")
     return residuals, movies
+
 
 def run_agents_offline(env_class, env_kwargs):
     """
@@ -136,7 +135,8 @@ def run_agents_offline(env_class, env_kwargs):
         movies.append((agent_name,frames))
     return 0,movies
 
-games = [(box.BoxEnvironment, {'level': 0}), (dog.DogEnvironment, {'level': 0})]
+games = [#(box.BoxEnvironment, {'level': 0}),
+        (dog.DogEnvironment, {'level': 0})]
 
 # Get violin plot for each game
 for (game, kwargs) in games:

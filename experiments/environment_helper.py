@@ -55,7 +55,12 @@ def derive_MDP(env, reward_fn=None):
                 explore(env, so_far + [action])
 
                 # Note: Will not record reward for initial state unless it can be reached on another timestep
-                mdp[new_str][1] = reward_fn[str(env._last_observations['board'])] if reward_fn not in (None, 'env') else time_step.reward
+                if isinstance(reward_fn, defaultdict):
+                    mdp[new_str][1] = reward_fn[str(env._last_observations['board'])]
+                elif reward_fn in (None, 'env'):
+                    mdp[new_str][1] = time_step.reward
+                else:
+                    mdp[new_str][1] = reward_fn(env._last_observations['board'])
                 AUPAgent.restart(env, so_far)
 
     env.reset()
