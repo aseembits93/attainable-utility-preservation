@@ -7,11 +7,10 @@ import datetime
 from agents.QLearning import QLearner
 import numpy as np
 from collections import defaultdict
-#import imageio
-#import cv2
 from environment_helper import run_episode
 import pickle
 import glob
+
 
 def true_goal_performance(true_agent, prefix_agent, env, correction_time):
     """
@@ -30,30 +29,20 @@ def true_goal_performance(true_agent, prefix_agent, env, correction_time):
     side_effect_score = 0
     for i in range(correction_time):
         state_idx = true_agent.str_map(str(time_step.observation['board']))
-        side_effect_score += (discount ** i) * true_agent.primary_reward[state_idx]
-        time_step = env.step(prefix_agent.act(time_step.observation))
+        reward = true_agent.primary_reward[state_idx] if isinstance(true_agent.primary_reward, defaultdict) else true_agent.primary_reward(time_step.observation['board'])
+        side_effect_score += (discount ** i) * reward
+        action = prefix_agent.act(time_step.observation)
+        time_step = env.step(action)
     state_idx = true_agent.str_map(str(time_step.observation['board']))
     side_effect_score += (discount ** correction_time) * np.max(true_agent.Q[state_idx])
     return side_effect_score
 
-def plot_images_to_ani(framesets):
-    # """
-    # Animates all agent executions and returns the animation object.
-
-    # :param framesets: [("agent_name", frames),...]
-    # """
-    for file_name, frames in framesets:
-        im = list()
-        for frame in frames:
-            im.append(cv2.resize(frame,(100,100),interpolation=cv2.INTER_AREA))
-        imageio.mimsave(file_name.split('.')[0]+'.gif', im)
 
 def run_game(game, kwargs):
     start_time = datetime.datetime.now()
-    residuals, movies = run_agents(game, kwargs)
+    residuals = run_agents(game, kwargs)
     print("Training finished; {} elapsed.\n".format(datetime.datetime.now() - start_time))
     # TODO violin plots here
-    plot_images_to_ani(movies)
 
 
 def run_agents(env_class, env_kwargs):
@@ -80,7 +69,7 @@ def run_agents(env_class, env_kwargs):
                                       epsilon=.2)  # Agent optimizing -1 * reward of intended_agent
     true_agents = random_reward_agents + [intended_agent, anti_intended_agent]
 
-    for agent in evaluation_agents + true_agents:
+    for agent in true_agents:
         if isinstance(agent, QLearner):
             agent.train(env)
         else:
@@ -95,7 +84,7 @@ def run_agents(env_class, env_kwargs):
                                               correction_time=correction_time)
         residuals.append(AUP_perf - standard_perf)  # higher is better for AUP
         print("AUP obtains " + str(residuals[-1]) + " greater performance.")
-    return residuals, movies
+    return residuals
 
 
 def run_agents_offline(env_class, env_kwargs):

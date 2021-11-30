@@ -4,7 +4,7 @@ from Agent import Agent
 class QLearner(Agent):
     name = "Q-learner"
 
-    def __init__(self, env, discount=.996, episodes=6, epsilon=.9, primary_reward='env', policy_idx=0):
+    def __init__(self, env, discount=.996, episodes=6000, epsilon=.9, primary_reward='env', policy_idx=0):
         """Trains using the simulator and e-greedy exploration to determine a greedy policy.
 
         :param env: Simulator.
