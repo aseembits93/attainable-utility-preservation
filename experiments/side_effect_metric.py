@@ -56,20 +56,21 @@ def run_agents(env_class, env_kwargs):
     env = env_class(**env_kwargs)
 
     # Agents to evaluate
-    aup_agent = ModelFreeAUPAgent(env)
-    standard_agent = QLearner(env)
-    evaluation_agents = [aup_agent, standard_agent]
+    aup_agent = ModelFreeAUPAgent(env, lambd=.01)
+    for file in sorted(glob.glob('q_functions/*_AUP_'+env.name+'*.pkl')):
+        with open(file,'rb') as f:
+            aup_agent.Q = pickle.load(f)
+    #aup_agent.train(env)
+    standard_agent = ExactSolver(env)
 
     # Learn Q-functions for ground-truth reward functions
-    random_reward_agents = [ExactSolver(env, primary_reward=defaultdict(np.random.uniform), policy_idx=i+1, epsilon=.2)
-                            for i in range(1)]
-    intended_agent = ExactSolver(env, primary_reward=env._get_true_reward,
-                                 epsilon=.2)  # Agent optimizing R := 2 * (goal reached?) - 1 * (side effect had?)
-    anti_intended_agent = ExactSolver(env, primary_reward=lambda state: -1 * env._get_true_reward(state),
-                                      epsilon=.2)  # Agent optimizing -1 * reward of intended_agent
+    random_reward_agents = [ExactSolver(env, primary_reward=defaultdict(np.random.uniform))
+                            for i in range(20)]
+    intended_agent = ExactSolver(env, primary_reward=env._get_true_reward)  # Agent optimizing R := 2 * (goal reached?) - 1 * (side effect had?)
+    anti_intended_agent = ExactSolver(env, primary_reward=lambda state: -1 * env._get_true_reward(state))  # Agent optimizing -1 * reward of intended_agent
     true_agents = random_reward_agents + [intended_agent, anti_intended_agent]
 
-    for agent in true_agents:
+    for agent in [standard_agent] + true_agents:
         if isinstance(agent, QLearner):
             agent.train(env)
         else:
@@ -87,44 +88,7 @@ def run_agents(env_class, env_kwargs):
     return residuals
 
 
-def run_agents_offline(env_class, env_kwargs):
-    """
-    Generate and run agent variants.
-
-    :param env_class: class object.
-    :param env_kwargs: environmental intialization parameters.
-    :param render_ax: PyPlot axis on which rendering can take place.
-    """
-    # Instantiate environment and agents
-    env = env_class(**env_kwargs)
-
-    custom_reward_agents = dict()
-    standard_agent = dict()
-    aup_agent = dict()
-    game_name = env_class.name
-    for file in sorted(glob.glob('results/policy_Q*'+game_name+'*.pkl')):
-        with open(file,'rb') as f:
-            custom_reward_agents[file]=pickle.load(f)
-    for file in sorted(glob.glob('results/*_AUP_'+game_name+'*.pkl')):
-        with open(file,'rb') as f:
-            aup_agent[file]=pickle.load(f)
-    for file in sorted(glob.glob('results/*_Standard_'+game_name+'*.pkl')):
-        with open(file,'rb') as f:
-            standard_agent[file]=pickle.load(f)
-    movies = list()
-    time_t = 10
-    for agent_name, agent in custom_reward_agents.items():
-        ret, _, perf, frames = run_episode(agent, env, save_frames=True, offline=True)
-        movies.append((agent_name,frames))
-    for agent_name, agent in standard_agent.items():
-        ret, _, perf, frames = run_episode(agent, env, save_frames=True, offline=True)
-        movies.append((agent_name,frames))
-    for agent_name, agent in aup_agent.items():
-        ret, _, perf, frames = run_episode(agent, env, save_frames=True, offline=True)
-        movies.append((agent_name,frames))
-    return 0,movies
-
-games = [#(box.BoxEnvironment, {'level': 0}),
+games = [(box.BoxEnvironment, {'level': 0}),
         (dog.DogEnvironment, {'level': 0})]
 
 # Get violin plot for each game

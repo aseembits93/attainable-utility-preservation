@@ -2,15 +2,14 @@ from ai_safety_gridworlds.environments.shared import safety_game
 from collections import defaultdict
 import experiments.environment_helper as environment_helper
 import numpy as np
-import pickle
+from ExactSolver import ExactSolver
 from QLearning import QLearner
 
 
 class ModelFreeAUPAgent(QLearner):
     name = "Model_free_AUP"
-    pen_epsilon, AUP_epsilon = .2, .9  # chance of choosing greedy action in training
 
-    def __init__(self, env, lambd=1. / 1.501, state_attainable=False, num_rewards=15,
+    def __init__(self, env, lambd=.01, state_attainable=False, num_rewards=15,
                  discount=.996, episodes=6000, primary_reward='env', policy_idx=0):
         """Trains using the simulator and e-greedy exploration to determine a greedy policy.
 
@@ -21,9 +20,7 @@ class ModelFreeAUPAgent(QLearner):
         """
         QLearner.__init__(self, env=env, discount=discount, episodes=episodes, primary_reward=primary_reward,
                           policy_idx=policy_idx)
-
         self.lambd = lambd  # Penalty coefficient
-        self.epsilon = self.pen_epsilon
         self.state_attainable = state_attainable
         self.primary_reward = primary_reward
 
@@ -34,65 +31,30 @@ class ModelFreeAUPAgent(QLearner):
             self.auxiliary_rewards = [defaultdict(np.random.random) for _ in range(num_rewards)]
 
         # Initialize tabular Q-functions for auxiliary reward functions, in addition to inherited self.Q
-        self.auxiliary_Q = [defaultdict(lambda: np.zeros(len(self.actions)))] * len(self.auxiliary_rewards)
-
-
-    def train(self, env):
-        self.performance = np.zeros(self.episodes / 10)
-
-        for episode in range(self.episodes):
-            if episode > 2.0 / 3 * self.episodes:  # begin greedy exploration
-                self.epsilon = self.AUP_epsilon
-
-            time_step = env.reset()
-            while not time_step.last():
-                last_board = str(time_step.observation['board'])
-                action = self.behavior_action(last_board)
-                time_step = env.step(action)
-                self.update_greedy(last_board, action, time_step)
-
-            if episode % 10 == 0:
-                _, actions, self.performance[episode / 10], _ = environment_helper.run_episode(self, env)
-        env.reset()
-
-        self.save()
+        self.auxiliary_agents = [ExactSolver(env, primary_reward=self.auxiliary_rewards[i])
+                                 for i in range(num_rewards)]
+        for agent in self.auxiliary_agents: agent.solve(env)
+        self.auxiliary_Q = [agent.Q for agent in self.auxiliary_agents]
+        if state_attainable: self.auxiliary_Q = map(lambda q: np.clip(q, 0, 1), self.auxiliary_Q)
 
     def get_penalty(self, board, action):
         if len(self.auxiliary_rewards) == 0: return 0
-        action_attainable = np.array([Q[board][action] for Q in self.auxiliary_Q])
-        null_attainable = np.array([Q[board][safety_game.Actions.NOTHING] for Q in self.auxiliary_Q])
+        diffs = np.array([agent.Q[agent.str_map(str(board))][action] - agent.Q[agent.str_map(str(board))][safety_game.Actions.NOTHING]
+                          for agent in self.auxiliary_agents])
 
         # Difference between taking action and doing nothing
-        return self.lambd * sum(abs(action_attainable - null_attainable))
+        return self.lambd * sum(abs(diffs))
 
     def update_greedy(self, last_board, action, time_step):
         """Perform TD update on observed reward."""
         learning_rate = 1
+
+        if self.primary_reward is 'env':
+           reward = time_step.reward
+        else:
+            reward = self.primary_reward[last_board]
+        reward = (1-self.discount) * reward - self.get_penalty(last_board, action)
+
         new_board = str(time_step.observation['board'])
-
-        def calculate_update(auxiliary_idx=None):
-            """Do the update for the main function (or the attainable function at the given index)."""
-            if auxiliary_idx is not None:
-                reward = self.auxiliary_rewards[auxiliary_idx](new_board) if self.state_attainable \
-                    else self.auxiliary_rewards[auxiliary_idx][new_board]
-                new_Q, old_Q = self.auxiliary_Q[auxiliary_idx][new_board].max(), \
-                               self.auxiliary_Q[auxiliary_idx][last_board][action]
-            else:
-                if self.primary_reward is 'env':
-                    reward = time_step.reward
-                else:
-                    reward = self.primary_reward[last_board]
-                reward = (1 - self.discount) * reward - self.get_penalty(last_board, action)
-
-                new_Q, old_Q = self.Q[new_board].max(), self.Q[last_board][action]
-            return learning_rate * (reward + self.discount * new_Q - old_Q)
-
-        # Learn the attainable reward functions
-        for attainable_idx in range(len(self.auxiliary_rewards)):
-            self.auxiliary_Q[attainable_idx][last_board][action] += calculate_update(attainable_idx)
-
-        # Clip Q-values to be state reachability indicators -- 0 if unreachable, 1 otherwise
-        if self.state_attainable:
-            for idx in range(len(self.auxiliary_Q)):
-                self.auxiliary_Q[idx][last_board][action] = np.clip(self.auxiliary_Q[idx][last_board][action], 0, 1)
-        self.Q[last_board][action] += calculate_update()
+        self.Q[last_board][action] += learning_rate * (reward + self.discount * self.Q[new_board].max()
+                                                       - self.Q[last_board][action])
