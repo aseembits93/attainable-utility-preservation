@@ -33,6 +33,7 @@ def true_goal_performance(true_agent, prefix_agent, env, correction_time):
         side_effect_score += (discount ** i) * reward
         action = prefix_agent.act(time_step.observation)
         time_step = env.step(action)
+        #if isinstance(prefix_agent, ModelFreeAUPAgent): print(time_step)
     state_idx = true_agent.str_map(str(time_step.observation['board']))
     side_effect_score += (discount ** correction_time) * np.max(true_agent.Q[state_idx])
     return side_effect_score
@@ -77,19 +78,24 @@ def run_agents(env_class, env_kwargs):
             agent.solve(env)
 
     correction_time = 10
-    residuals = []
+    residuals = defaultdict(list)
     for true_agent in true_agents:
         AUP_perf = true_goal_performance(true_agent=true_agent, prefix_agent=aup_agent, env=env,
                                          correction_time=correction_time)
         standard_perf = true_goal_performance(true_agent=true_agent, prefix_agent=standard_agent, env=env,
                                               correction_time=correction_time)
-        residuals.append(AUP_perf - standard_perf)  # higher is better for AUP
-        print("AUP obtains " + str(residuals[-1]) + " greater performance.")
+        def get_label(agent):
+            if agent == intended_agent: return 'True reward'
+            elif agent == anti_intended_agent: return 'Inverted true reward'
+            else: return 'random'
+
+        residuals[get_label(true_agent)].append(AUP_perf - standard_perf)  # higher is better for AUP
+    print(residuals)
     return residuals
 
 
 games = [(box.BoxEnvironment, {'level': 0}),
-        (dog.DogEnvironment, {'level': 0})]
+         (dog.DogEnvironment, {'level': 0})]
 
 # Get violin plot for each game
 for (game, kwargs) in games:
