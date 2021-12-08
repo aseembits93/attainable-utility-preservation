@@ -10,6 +10,8 @@ from collections import defaultdict
 from environment_helper import run_episode
 import pickle
 import glob
+import pandas as pd
+import seaborn as sns
 
 
 def true_goal_performance(true_agent, prefix_agent, env, correction_time):
@@ -45,6 +47,16 @@ def run_game(game, kwargs):
     print("Training finished; {} elapsed.\n".format(datetime.datetime.now() - start_time))
     # TODO violin plots here
 
+def plot_residuals(residuals, env):
+    snsdict = defaultdict(list)
+    for key in residuals.keys():
+        for value in residuals[key]:
+            snsdict['rewardtype'].append(key)
+            snsdict['value'].append(value)
+    snsdict = dict(snsdict)
+    ax = sns.violinplot(x="rewardtype", y="value", data=pd.DataFrame.from_dict(snsdict))
+    fig = ax.get_figure()
+    fig.savefig('residuals_'+env.name+'.pdf')         
 
 def run_agents(env_class, env_kwargs):
     """
@@ -58,10 +70,10 @@ def run_agents(env_class, env_kwargs):
 
     # Agents to evaluate
     aup_agent = ModelFreeAUPAgent(env, lambd=.01)
-    for file in sorted(glob.glob('q_functions/*_AUP_'+env.name+'*.pkl')):
-        with open(file,'rb') as f:
-            aup_agent.Q = pickle.load(f)
-    #aup_agent.train(env)
+    # for file in sorted(glob.glob('q_functions/*_AUP_'+env.name+'*.pkl')):
+    #     with open(file,'rb') as f:
+    #         aup_agent.Q = pickle.load(f)
+    aup_agent.train(env)
     standard_agent = ExactSolver(env)
 
     # Learn Q-functions for ground-truth reward functions
@@ -91,6 +103,7 @@ def run_agents(env_class, env_kwargs):
 
         residuals[get_label(true_agent)].append(AUP_perf - standard_perf)  # higher is better for AUP
     print(residuals)
+    plot_residuals(residuals,env)
     return residuals
 
 
