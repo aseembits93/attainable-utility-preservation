@@ -56,7 +56,8 @@ def plot_residuals(residuals, env):
     snsdict = dict(snsdict)
     ax = sns.violinplot(x="rewardtype", y="value", data=pd.DataFrame.from_dict(snsdict))
     fig = ax.get_figure()
-    fig.savefig('residuals_'+env.name+'.pdf')         
+    fig.savefig('residuals_'+env.name+'.pdf')   
+    plt.close()      
 
 def run_agents(env_class, env_kwargs):
     """
