@@ -11,8 +11,9 @@ from environment_helper import run_episode
 import pickle
 import glob
 import pandas as pd
+import matplotlib.pyplot as plt
 import seaborn as sns
-
+import ipdb as pdb
 
 def true_goal_performance(true_agent, prefix_agent, env, correction_time):
     """
@@ -49,10 +50,10 @@ def run_game(game, kwargs):
 
 def plot_residuals(residuals, env):
     snsdict = defaultdict(list)
-    for key in residuals.keys():
-        for value in residuals[key]:
-            snsdict['rewardtype'].append(key)
-            snsdict['value'].append(value)
+    #for key in residuals.keys():
+    for value in residuals['random']:
+        snsdict['rewardtype'].append('random')
+        snsdict['value'].append(value)
     snsdict = dict(snsdict)
     ax = sns.violinplot(x="rewardtype", y="value", data=pd.DataFrame.from_dict(snsdict))
     fig = ax.get_figure()
@@ -79,7 +80,7 @@ def run_agents(env_class, env_kwargs):
 
     # Learn Q-functions for ground-truth reward functions
     random_reward_agents = [ExactSolver(env, primary_reward=defaultdict(np.random.uniform))
-                            for i in range(20)]
+                            for i in range(1000)]
     intended_agent = ExactSolver(env, primary_reward=env._get_true_reward)  # Agent optimizing R := 2 * (goal reached?) - 1 * (side effect had?)
     anti_intended_agent = ExactSolver(env, primary_reward=lambda state: -1 * env._get_true_reward(state))  # Agent optimizing -1 * reward of intended_agent
     true_agents = random_reward_agents + [intended_agent, anti_intended_agent]
@@ -105,6 +106,9 @@ def run_agents(env_class, env_kwargs):
         residuals[get_label(true_agent)].append(AUP_perf - standard_perf)  # higher is better for AUP
     print(residuals)
     plot_residuals(residuals,env)
+    print("save residuals")
+    with open('residuals_'+env.name+'.pkl','wb') as f:
+        pickle.dump(residuals, f)
     return residuals
 
 
